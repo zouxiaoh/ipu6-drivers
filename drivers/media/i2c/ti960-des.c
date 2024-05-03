@@ -400,10 +400,8 @@ static int ti960_enum_mbus_code(struct v4l2_subdev *sd,
 #endif
 				struct v4l2_subdev_mbus_code_enum *code)
 {
-	struct ti960 *va = to_ti960(sd);
 	const uint32_t *supported_code =
 		ti960_supported_codes[code->pad];
-	bool next_stream = false;
 	int i;
 
 	for (i = 0; supported_code[i]; i++) {
@@ -432,7 +430,6 @@ static const struct ti960_csi_data_format
 static int ti960_get_frame_desc(struct v4l2_subdev *sd,
 	unsigned int pad, struct v4l2_mbus_frame_desc *desc)
 {
-	struct ti960 *va = to_ti960(sd);
 	int sink_pad = pad;
 
 	if (sink_pad >= 0) {
@@ -938,7 +935,6 @@ static bool ti960_broadcast_mode(struct v4l2_subdev *subdev)
 static int ti960_rx_port_config(struct ti960 *va, int sink, int rx_port)
 {
 	int rval;
-	int i;
 	unsigned int csi_vc_map;
 
 	/* Select RX port. */
@@ -1258,7 +1254,6 @@ static int ti960_s_ctrl(struct v4l2_ctrl *ctrl)
 {
 	struct ti960 *va = container_of(ctrl->handler,
 					     struct ti960, ctrl_handler);
-	struct i2c_client *client = v4l2_get_subdevdata(&va->sd);
 	u32 val;
 	u8 vc_id;
 	u8 state;
@@ -1428,7 +1423,9 @@ failed_out:
 
 static int ti960_init(struct ti960 *va)
 {
+#ifdef TI960_RESET_NEEDED
 	unsigned int reset_gpio = va->pdata->reset_gpio;
+#endif
 	int i, rval;
 	unsigned int val;
 
@@ -1544,7 +1541,7 @@ static int ti960_probe(struct i2c_client *client,
 #endif
 {
 	struct ti960 *va;
-	int i, j, k, l, rval = 0;
+	int i, rval = 0;
 	int gpio_FPD = 0;
 
 	if (client->dev.platform_data == NULL)

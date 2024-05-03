@@ -1706,7 +1706,6 @@ static int imx390_set_format(struct v4l2_subdev *sd,
 {
 	struct imx390 *imx390 = to_imx390(sd);
 	const struct imx390_mode *mode;
-	int ret = 0;
 	s32 vblank_def;
 	s64 hblank;
 	int i;
