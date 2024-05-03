@@ -1658,14 +1658,25 @@ free_gpio:
 	return rval;
 }
 
-static int ti960_remove(struct i2c_client *client)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 2, 0)
+static int
+#else
+static void
+#endif
+ti960_remove(struct i2c_client *client)
 {
 	struct v4l2_subdev *subdev = i2c_get_clientdata(client);
 	struct ti960 *va = to_ti960(subdev);
 	int i;
 
 	if (!va)
+	{
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 2, 0)
 		return 0;
+#else
+		return;
+#endif
+	}
 
 	mutex_destroy(&va->mutex);
 	v4l2_ctrl_handler_free(&va->ctrl_handler);
@@ -1684,7 +1695,9 @@ static int ti960_remove(struct i2c_client *client)
 
 	gpiochip_remove(&va->gc);
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 2, 0)
 	return 0;
+#endif
 }
 
 #ifdef CONFIG_PM

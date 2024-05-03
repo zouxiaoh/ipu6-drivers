@@ -1949,7 +1949,12 @@ static int imx390_identify_module(struct imx390 *imx390)
 	return 0;
 }
 
-static int imx390_remove(struct i2c_client *client)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 2, 0)
+static int
+#else
+static void
+#endif
+imx390_remove(struct i2c_client *client)
 {
 	struct v4l2_subdev *sd = i2c_get_clientdata(client);
 	struct imx390 *imx390 = to_imx390(sd);
@@ -1960,7 +1965,9 @@ static int imx390_remove(struct i2c_client *client)
 	pm_runtime_disable(&client->dev);
 	mutex_destroy(&imx390->mutex);
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 2, 0)
 	return 0;
+#endif
 }
 
 irqreturn_t imx390_threaded_irq_fn(int irq, void *dev_id)
