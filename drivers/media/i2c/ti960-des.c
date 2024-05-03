@@ -436,7 +436,11 @@ static int ti960_get_frame_desc(struct v4l2_subdev *sd,
 
 	if (sink_pad >= 0) {
 		struct media_pad *remote_pad =
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(6,0,0))
 			media_entity_remote_pad(&sd->entity.pads[sink_pad]);
+#else
+			media_pad_remote_pad_first(&sd->entity.pads[sink_pad]);
+#endif
 		if (remote_pad) {
 			struct v4l2_subdev *rsd = media_entity_to_v4l2_subdev(remote_pad->entity);
 
@@ -886,7 +890,11 @@ static bool ti960_broadcast_mode(struct v4l2_subdev *subdev)
 
 	for (i = 0; i < NR_OF_TI960_SINK_PADS; i++) {
 		struct media_pad *remote_pad =
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(6,0,0))
 			media_entity_remote_pad(&va->pad[i]);
+#else
+			media_pad_remote_pad_first(&va->pad[i]);
+#endif
 
 		if (!remote_pad)
 			continue;
@@ -1029,7 +1037,11 @@ static int ti960_set_stream(struct v4l2_subdev *subdev, int enable)
 	bitmap_zero(rx_port_enabled, 32);
 	for (i = 0; i < NR_OF_TI960_SINK_PADS; i++) {
 		struct media_pad *remote_pad =
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(6,0,0))
 			media_entity_remote_pad(&va->pad[i]);
+#else
+			media_pad_remote_pad_first(&va->pad[i]);
+#endif
 
 		if (!remote_pad)
 			continue;
