@@ -3,6 +3,7 @@
 
 #include <linux/device.h>
 #include <linux/gpio.h>
+#include <linux/gpio/driver.h>
 #include <linux/module.h>
 #include <linux/slab.h>
 #include <linux/wait.h>
@@ -1662,8 +1663,10 @@ free_gpio:
 		if (gpio_FPD == 0)
 			gpio_set_value(va->pdata->FPD_gpio, 0);
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 0, 0)
 		devm_gpio_free(&client->dev,
 			va->pdata->FPD_gpio);
+#endif
 	}
 
 	dev_err(&client->dev, "%s Probe Failed", va->sd.name);
