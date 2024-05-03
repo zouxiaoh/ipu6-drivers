@@ -3,6 +3,7 @@
 
 #include <linux/device.h>
 #include <linux/gpio.h>
+#include <linux/gpio/driver.h>
 #include <linux/module.h>
 #include <linux/slab.h>
 #include <linux/wait.h>
@@ -399,10 +400,8 @@ static int ti960_enum_mbus_code(struct v4l2_subdev *sd,
 #endif
 				struct v4l2_subdev_mbus_code_enum *code)
 {
-	struct ti960 *va = to_ti960(sd);
 	const uint32_t *supported_code =
 		ti960_supported_codes[code->pad];
-	bool next_stream = false;
 	int i;
 
 	for (i = 0; supported_code[i]; i++) {
@@ -431,12 +430,15 @@ static const struct ti960_csi_data_format
 static int ti960_get_frame_desc(struct v4l2_subdev *sd,
 	unsigned int pad, struct v4l2_mbus_frame_desc *desc)
 {
-	struct ti960 *va = to_ti960(sd);
 	int sink_pad = pad;
 
 	if (sink_pad >= 0) {
 		struct media_pad *remote_pad =
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(6,0,0))
 			media_entity_remote_pad(&sd->entity.pads[sink_pad]);
+#else
+			media_pad_remote_pad_first(&sd->entity.pads[sink_pad]);
+#endif
 		if (remote_pad) {
 			struct v4l2_subdev *rsd = media_entity_to_v4l2_subdev(remote_pad->entity);
 
@@ -886,7 +888,11 @@ static bool ti960_broadcast_mode(struct v4l2_subdev *subdev)
 
 	for (i = 0; i < NR_OF_TI960_SINK_PADS; i++) {
 		struct media_pad *remote_pad =
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(6,0,0))
 			media_entity_remote_pad(&va->pad[i]);
+#else
+			media_pad_remote_pad_first(&va->pad[i]);
+#endif
 
 		if (!remote_pad)
 			continue;
@@ -929,7 +935,6 @@ static bool ti960_broadcast_mode(struct v4l2_subdev *subdev)
 static int ti960_rx_port_config(struct ti960 *va, int sink, int rx_port)
 {
 	int rval;
-	int i;
 	unsigned int csi_vc_map;
 
 	/* Select RX port. */
@@ -1029,7 +1034,11 @@ static int ti960_set_stream(struct v4l2_subdev *subdev, int enable)
 	bitmap_zero(rx_port_enabled, 32);
 	for (i = 0; i < NR_OF_TI960_SINK_PADS; i++) {
 		struct media_pad *remote_pad =
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(6,0,0))
 			media_entity_remote_pad(&va->pad[i]);
+#else
+			media_pad_remote_pad_first(&va->pad[i]);
+#endif
 
 		if (!remote_pad)
 			continue;
@@ -1245,7 +1254,6 @@ static int ti960_s_ctrl(struct v4l2_ctrl *ctrl)
 {
 	struct ti960 *va = container_of(ctrl->handler,
 					     struct ti960, ctrl_handler);
-	struct i2c_client *client = v4l2_get_subdevdata(&va->sd);
 	u32 val;
 	u8 vc_id;
 	u8 state;
@@ -1415,7 +1423,9 @@ failed_out:
 
 static int ti960_init(struct ti960 *va)
 {
+#ifdef TI960_RESET_NEEDED
 	unsigned int reset_gpio = va->pdata->reset_gpio;
+#endif
 	int i, rval;
 	unsigned int val;
 
@@ -1531,7 +1541,7 @@ static int ti960_probe(struct i2c_client *client,
 #endif
 {
 	struct ti960 *va;
-	int i, j, k, l, rval = 0;
+	int i, rval = 0;
 	int gpio_FPD = 0;
 
 	if (client->dev.platform_data == NULL)
@@ -1650,22 +1660,35 @@ free_gpio:
 		if (gpio_FPD == 0)
 			gpio_set_value(va->pdata->FPD_gpio, 0);
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 0, 0)
 		devm_gpio_free(&client->dev,
 			va->pdata->FPD_gpio);
+#endif
 	}
 
 	dev_err(&client->dev, "%s Probe Failed", va->sd.name);
 	return rval;
 }
 
-static int ti960_remove(struct i2c_client *client)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 2, 0)
+static int
+#else
+static void
+#endif
+ti960_remove(struct i2c_client *client)
 {
 	struct v4l2_subdev *subdev = i2c_get_clientdata(client);
 	struct ti960 *va = to_ti960(subdev);
 	int i;
 
 	if (!va)
+	{
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 2, 0)
 		return 0;
+#else
+		return;
+#endif
+	}
 
 	mutex_destroy(&va->mutex);
 	v4l2_ctrl_handler_free(&va->ctrl_handler);
@@ -1684,7 +1707,9 @@ static int ti960_remove(struct i2c_client *client)
 
 	gpiochip_remove(&va->gc);
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 2, 0)
 	return 0;
+#endif
 }
 
 #ifdef CONFIG_PM
